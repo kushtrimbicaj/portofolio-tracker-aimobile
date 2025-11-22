@@ -1,0 +1,11 @@
+# Ignore node modules and other large things for publishing
+node_modules/
+.git/
+.vscode/
+*.log
+coverage/
+build/
+dist/
+android/
+ios/
+*.keystore
