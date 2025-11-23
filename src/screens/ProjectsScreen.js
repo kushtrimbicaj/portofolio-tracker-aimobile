@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,17 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  TouchableOpacity
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import { IconButton as PaperIconButton } from 'react-native-paper'; 
 import { useFocusEffect } from '@react-navigation/native';
-import ProjectCard from '../components/ProjectCard';
-import { getProjects, deleteProject } from '../services/supabase';
+import ProjectCard from '../components/ProjectCard'; 
+import { getProjects, deleteProject } from '../services/supabase'; 
+import { LinearGradient } from 'expo-linear-gradient'; 
+
+// iOS accent color
+const IOS_BLUE = '#007AFF';
 
 export default function ProjectsScreen({ navigation }) {
   const [projects, setProjects] = useState([]);
@@ -36,11 +41,12 @@ export default function ProjectsScreen({ navigation }) {
     }
   }, [refreshing]);
 
+  // Load projects on mount
   useEffect(() => {
     load();
   }, [load]);
 
-  // Refresh when screen gains focus (useful after edits/adds)
+  // Refresh when screen gains focus
   useFocusEffect(
     useCallback(() => {
       load();
@@ -52,15 +58,27 @@ export default function ProjectsScreen({ navigation }) {
     load();
   }, [load]);
 
-  // set header buttons for adding and stats
-  useEffect(() => {
+  // 🚀 FIX: Use useLayoutEffect to ensure header buttons render immediately
+  useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <View style={{ flexDirection: 'row' }}>
-          <Appbar.Action icon="chart-bar" onPress={() => navigation.navigate('Stats')} />
-          <Appbar.Action icon="plus" onPress={() => navigation.navigate('AddProject')} />
+        <View style={styles.headerRightContainer}>
+          <PaperIconButton
+            icon="chart-bar"
+            color={IOS_BLUE}
+            size={24}
+            onPress={() => navigation.navigate('Stats')}
+          />
+          <PaperIconButton
+            icon="plus-circle"
+            color={IOS_BLUE}
+            size={24}
+            onPress={() => navigation.navigate('AddProject')}
+          />
         </View>
-      )
+      ),
+      // Assuming headerLeft is handled in App.js now, but included here for completeness
+      // headerLeft: () => null, 
     });
   }, [navigation]);
 
@@ -71,7 +89,7 @@ export default function ProjectsScreen({ navigation }) {
 
   const handleDelete = () => {
     if (!selectedProject) return;
-    Alert.alert('Delete project', 'Are you sure you want to delete this project?', [
+    Alert.alert('Delete project', `Are you sure you want to delete "${selectedProject.name || 'this project'}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -81,7 +99,6 @@ export default function ProjectsScreen({ navigation }) {
             await deleteProject(selectedProject.id);
             setModalVisible(false);
             setSelectedProject(null);
-            // Refresh list
             setRefreshing(true);
             await load();
           } catch (err) {
@@ -96,72 +113,159 @@ export default function ProjectsScreen({ navigation }) {
   const handleEdit = () => {
     if (!selectedProject) return;
     setModalVisible(false);
-    // navigate to AddProject in edit mode by passing project
-    // navigation is not available inside renderItem; rely on navigation from screen via ref
-    // but we have access to navigation via props; since this screen is functional component without props,
-    // use a small trick: we'll rely on the global navigation via the component's scope by using a ref —
-    // simpler: pass navigation from parent by wrapping ProjectsScreen as a screen; we already are in a screen so use a closure.
+    navigation.navigate('AddProject', { project: selectedProject });
+    setSelectedProject(null);
   };
 
   if (loading && projects.length === 0) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={IOS_BLUE} />
         <Text style={{ marginTop: 12 }}>Loading projects...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    // Background: Apple Silver Frost Gradient
+    <LinearGradient
+      colors={['#FDFBFB', '#EBEDEE']}
+      style={styles.gradientContainer}
+    >
       <FlatList
         data={projects}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <ProjectCard project={item} onLongPress={handleLongPress} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<Text style={styles.empty}>No projects found.</Text>}
-        contentContainerStyle={projects.length === 0 ? styles.emptyContainer : undefined}
+        renderItem={({ item }) => <ProjectCard project={item} onLongPress={() => handleLongPress(item)} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={IOS_BLUE} />}
+        ListEmptyComponent={<Text style={styles.empty}>No projects found. Tap the plus button to create one.</Text>}
+        contentContainerStyle={[
+          styles.flatListContent,
+          projects.length === 0 ? styles.emptyContainer : undefined
+        ]}
       />
 
+      {/* Modal for Edit/Delete actions on long press */}
       <Modal visible={modalVisible} animationType="fade" transparent>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <View style={{ width: 300, backgroundColor: '#fff', borderRadius: 8, padding: 12 }}>
-            <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 12 }}>Project actions</Text>
-            <TouchableOpacity
-              style={{ paddingVertical: 10 }}
-              onPress={() => {
-                // Navigate to edit screen and pass project
-                setModalVisible(false);
-                navigation.navigate('AddProject', { project: selectedProject });
-                setSelectedProject(null);
-              }}
-            >
-              <Text style={{ color: '#007AFF', fontSize: 16 }}>Edit project</Text>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)} // Dismiss modal on outside tap
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Project Actions</Text>
+            
+            <TouchableOpacity style={styles.modalOption} onPress={handleEdit}>
+              <Text style={styles.modalOptionText}>Edit Project</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ paddingVertical: 10 }} onPress={handleDelete}>
-              <Text style={{ color: '#FF3B30', fontSize: 16 }}>Delete project</Text>
+            <TouchableOpacity style={styles.modalOption} onPress={handleDelete}>
+              <Text style={styles.modalOptionDestructive}>Delete Project</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={{ paddingVertical: 10 }}
+              style={[styles.modalOption, styles.modalCancel]}
               onPress={() => {
                 setModalVisible(false);
                 setSelectedProject(null);
               }}
             >
-              <Text style={{ color: '#333', fontSize: 16 }}>Cancel</Text>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f2f4f7' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  empty: { textAlign: 'center', marginTop: 24, color: '#666' },
-  emptyContainer: { flex: 1, justifyContent: 'center' },
+  gradientContainer: {
+    flex: 1,
+  },
+  flatListContent: {
+    padding: 15,
+    paddingTop: 10,
+    minHeight: '100%', // Ensures ListEmptyComponent is centered
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 24,
+    color: '#666',
+  },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  // --- Header Styles ---
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 5,
+  },
+  // --- Modal Styles ---
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContent: {
+    width: 300,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalTitle: {
+    fontWeight: '700',
+    fontSize: 18,
+    marginBottom: 10,
+    color: '#333',
+    textAlign: 'center',
+  },
+  modalOption: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalOptionText: {
+    color: IOS_BLUE,
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  modalOptionDestructive: {
+    color: '#FF3B30', // iOS Red for delete
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  modalCancel: {
+    borderBottomWidth: 0,
+    marginTop: 5,
+    backgroundColor: '#f7f7f7',
+    borderRadius: 8,
+  },
+  modalCancelText: {
+    color: '#333',
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+  }
 });

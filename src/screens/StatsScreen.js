@@ -26,7 +26,7 @@ export default function StatsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Title style={styles.title}>Portfolio Allocation</Title>
+        <Title style={styles.title}><Text>Portfolio Allocation</Text></Title>
       </View>
 
       <View style={styles.card}>

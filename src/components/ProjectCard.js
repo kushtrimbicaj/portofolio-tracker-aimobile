@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Linking, Alert } from 'react-native';
 import { Card, Button, Title, Paragraph } from 'react-native-paper';
+import { Text } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 
@@ -21,8 +22,8 @@ export default function ProjectCard({ project, onLongPress }) {
   return (
     <Card mode="elevated" style={styles.card} onLongPress={() => onLongPress && onLongPress(project)}>
       <Card.Content>
-        <Title numberOfLines={1}>{project.title}</Title>
-        <Paragraph numberOfLines={1} style={{ color: '#666' }}>{project.url}</Paragraph>
+        <Title numberOfLines={1}><Text numberOfLines={1}>{project.title}</Text></Title>
+        <Paragraph numberOfLines={1} style={{ color: '#666' }}><Text numberOfLines={1} style={{ color: '#666' }}>{project.url}</Text></Paragraph>
       </Card.Content>
       <Card.Actions style={styles.actions}>
         <Button
@@ -31,7 +32,7 @@ export default function ProjectCard({ project, onLongPress }) {
           onPress={() => openUrl(project.url)}
           icon={() => <MaterialIcons name="open-in-new" size={18} color="#fff" />}
         >
-          Open
+          <Text>Open</Text>
         </Button>
       </Card.Actions>
     </Card>

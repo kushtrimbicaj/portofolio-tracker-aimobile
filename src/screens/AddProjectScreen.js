@@ -8,6 +8,7 @@ import {
   Platform
 } from 'react-native';
 import { TextInput, Button, Title } from 'react-native-paper';
+import { Text } from 'react-native';
 import { createProject, updateProject } from '../services/supabase';
 
 export default function AddProjectScreen({ navigation, route }) {
@@ -52,7 +53,7 @@ export default function AddProjectScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <Title>{editing ? 'Edit project' : 'Add project'}</Title>
+        <Title><Text>{editing ? 'Edit project' : 'Add project'}</Text></Title>
 
         <TextInput
           label="Title"
@@ -81,7 +82,7 @@ export default function AddProjectScreen({ navigation, route }) {
           disabled={saving}
           style={{ marginTop: 20 }}
         >
-          Save
+          <Text>Save</Text>
         </Button>
       </View>
     </KeyboardAvoidingView>

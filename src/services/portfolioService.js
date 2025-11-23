@@ -1,40 +1,64 @@
-// Mock portfolio service
-
 const MOCK_ASSETS = [
-  { id: 'btc', name: 'Bitcoin', symbol: 'BTC', price: 60000, quantity: 0.12, change: 2.3 },
-  { id: 'eth', name: 'Ethereum', symbol: 'ETH', price: 3500, quantity: 1.5, change: -1.1 },
-  { id: 'ada', name: 'Cardano', symbol: 'ADA', price: 1.25, quantity: 1000, change: 0.5 }
+  {
+    id: 'btc-manual',
+    coin_id: 'manual-btc',
+    name: 'Bitcoin',
+    symbol: 'BTC',
+    price: 54000,
+    quantity: 0.12,
+    change: 2.5,
+    value: 54000 * 0.12,
+    avg_price: 45000,
+    last_price: 54000,
+  },
+  {
+    id: 'eth-manual',
+    coin_id: 'manual-eth',
+    name: 'Ethereum',
+    symbol: 'ETH',
+    price: 3400,
+    quantity: 1.5,
+    change: -1.2,
+    value: 3400 * 1.5,
+    avg_price: 3000,
+    last_price: 3400,
+  },
 ];
 
+let inMemory = [...MOCK_ASSETS];
+
 export async function fetchPortfolio() {
-  // Simulate network latency
-  return new Promise((resolve) => setTimeout(() => resolve(MOCK_ASSETS), 400));
+  // simulate async fetch
+  return new Promise((resolve) => setTimeout(() => resolve(inMemory.slice()), 120));
 }
 
-/**
- * Development helper: add an item to the in-memory mock portfolio.
- * This allows testing the Add Asset flow without Supabase configured.
- */
 export async function addMockPortfolioItem(item) {
-  const id = item.coin_id || item.id || `local-${Date.now()}`;
-  const entry = {
-    id,
-    name: item.name || item.coin_id || 'Unknown',
+  const toAdd = {
+    id: item.id ?? `local-${Date.now()}`,
+    coin_id: item.coin_id ?? `manual-${(item.symbol || 'asset').toLowerCase()}-${Date.now()}`,
+    name: item.name || item.symbol || 'Unknown',
     symbol: (item.symbol || '').toUpperCase(),
-    price: item.last_price ?? item.avg_price ?? 0,
+    price: item.last_price ?? item.price ?? 0,
+    last_price: item.last_price ?? item.price ?? 0,
     quantity: Number(item.quantity) || 0,
-    change: 0,
+    change: item.change ?? 0,
+    avg_price: item.avg_price ?? null,
+    value: (Number(item.last_price ?? item.price ?? 0) * Number(item.quantity || 0)) || 0,
     raw: item,
   };
-  MOCK_ASSETS.push(entry);
-  return entry;
+  inMemory = [toAdd, ...inMemory];
+  return toAdd;
 }
 
-export async function removeMockPortfolioItem(id) {
-  const idx = MOCK_ASSETS.findIndex((a) => a.id === id || a.symbol === String(id).toUpperCase());
-  if (idx >= 0) {
-    const [removed] = MOCK_ASSETS.splice(idx, 1);
-    return removed;
-  }
-  throw new Error('mock item not found');
+export async function removeMockPortfolioItem(idOrSymbol) {
+  const key = String(idOrSymbol || '');
+  const prev = inMemory.length;
+  inMemory = inMemory.filter(a => a.id !== key && a.symbol !== key && a.coin_id !== key);
+  return prev !== inMemory.length;
 }
+
+export default {
+  fetchPortfolio,
+  addMockPortfolioItem,
+  removeMockPortfolioItem,
+};
